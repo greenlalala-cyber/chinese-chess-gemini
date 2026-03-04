@@ -1,7 +1,61 @@
 /**
  * 冠冠中國象棋 (Xiangqi) 完整邏輯
- * 包含：大小盤規則、暗吃/連吃、自動存檔、手動將軍勝利、AI
+ * 包含：大小盤規則、暗吃/連吃、自動存檔、手動將軍勝利、AI、音效系統
  */
+
+// --- 音效系統 (AudioManager) ---
+const AudioManager = {
+    enabled: true,
+    ctx: null, // AudioContext
+    
+    // 初始化 (需在使用者第一次點擊時觸發，以符合瀏覽器 Autoplay 政策)
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    },
+
+    // 使用內建合成器產生音效 (確保完全離線可用)
+    playTone(freq, type, duration) {
+        if (!this.enabled || !this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        
+        // 音量漸弱效果，避免爆音
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+        
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + duration);
+    },
+
+    // 播放指定事件的音效
+    play(event) {
+        if (!this.enabled) return;
+
+        switch(event) {
+            case 'select': this.playTone(600, 'sine', 0.1); break;       // 輕巧的高音
+            case 'move': this.playTone(300, 'triangle', 0.15); break;    // 沉穩的落子音
+            case 'capture': this.playTone(150, 'square', 0.2); break;    // 較具攻擊性的低音
+            case 'reveal': this.playTone(500, 'sine', 0.15); break;      // 翻牌音
+            case 'error': this.playTone(100, 'sawtooth', 0.3); break;    // 錯誤/死亡的警告音
+            case 'check': this.playTone(800, 'square', 0.4); break;      // 將軍的高頻警告音
+            case 'win': 
+                this.playTone(400, 'sine', 0.2);
+                setTimeout(() => this.playTone(600, 'sine', 0.4), 200);
+                break; // 勝利的雙音效
+            case 'dice_roll': this.playTone(800, 'triangle', 0.05); break; // 快速跳動音
+            case 'dice_stop': this.playTone(400, 'square', 0.2); break;    // 骰子定音
+        }
+    }
+};
 
 // --- 常數定義 ---
 const PIECE_TYPES = {
@@ -31,7 +85,7 @@ let game = {
     board: [], // 2D array [x][y]
     pieces: [],
     selectedPiece: null,
-    rules: { darkCapture: true, chainCapture: true, hints: true, dangerZone: false },
+    rules: { sound: true, darkCapture: true, chainCapture: true, hints: true, dangerZone: false },
     chainPieceId: null, // 用於連吃鎖定
     canClaimWin: false, // 處於將軍狀態
     isGameOver: false
@@ -70,6 +124,7 @@ window.onload = () => {
 };
 
 document.getElementById('btn-resume').addEventListener('click', () => {
+    AudioManager.init(); // 初始化音效
     loadGame();
     UI.saveModal.classList.add('hidden');
     startGameUI();
@@ -82,6 +137,7 @@ document.getElementById('btn-new-game-prompt').addEventListener('click', () => {
 });
 
 document.getElementById('btn-start-game').addEventListener('click', () => {
+    AudioManager.init(); // 初始化音效
     setupNewGame();
 });
 
@@ -150,17 +206,24 @@ function rollDice(color) {
     // CPU自動停骰
     if (game.mode === 'pvc' && color === 'black') {
         btnElem.classList.add('hidden');
-        diceState.interval = setInterval(() => { valElem.innerText = Math.floor(Math.random()*6)+1; }, 50);
+        diceState.interval = setInterval(() => { 
+            valElem.innerText = Math.floor(Math.random()*6)+1; 
+            AudioManager.play('dice_roll'); // 骰子跳動音效
+        }, 50);
         setTimeout(() => stopDice('black'), 1500);
     } else {
         btnElem.classList.remove('hidden');
-        diceState.interval = setInterval(() => { valElem.innerText = Math.floor(Math.random()*6)+1; }, 50);
+        diceState.interval = setInterval(() => { 
+            valElem.innerText = Math.floor(Math.random()*6)+1; 
+            AudioManager.play('dice_roll'); // 骰子跳動音效
+        }, 50);
         btnElem.onclick = () => stopDice(color);
     }
 }
 
 function stopDice(color) {
     clearInterval(diceState.interval);
+    AudioManager.play('dice_stop'); // 骰子停止音效
     const btnElem = document.getElementById(`btn-stop-dice-${color}`);
     btnElem.classList.add('hidden');
     
@@ -325,6 +388,13 @@ function updateUI() {
 // --- 遊戲中設定切換 ---
 document.querySelectorAll('.ingame-settings input').forEach(input => {
     input.addEventListener('change', () => {
+        // 音效控制 (防呆：確保在 HTML 更新前不會報錯)
+        const soundCheck = document.getElementById('in-chk-sound');
+        if (soundCheck) {
+            game.rules.sound = soundCheck.checked;
+            AudioManager.enabled = game.rules.sound;
+        }
+
         game.rules.hints = document.getElementById('in-chk-hints').checked;
         game.rules.dangerZone = document.getElementById('in-chk-danger').checked;
         game.rules.darkCapture = document.getElementById('in-chk-dark').checked;
@@ -363,6 +433,7 @@ function handlePieceClick(clickedPiece) {
         } else if (!game.chainPieceId) {
             // 單純翻牌 (不能在連吃狀態翻牌)
             clickedPiece.revealed = true;
+            AudioManager.play('reveal'); // 翻牌音效
             switchTurn();
         }
         return;
@@ -370,6 +441,7 @@ function handlePieceClick(clickedPiece) {
 
     // 選取己方棋子
     if (clickedPiece.color === game.turn) {
+        AudioManager.play('select'); // 選取音效
         game.selectedPiece = clickedPiece;
         renderBoard();
     } else if (game.selectedPiece) {
@@ -497,6 +569,8 @@ function executeMove(piece, tx, ty) {
     // 處理暗吃 (小盤且目標未翻開)
     if (target && !target.revealed && game.boardType === 'half') {
         target.revealed = true;
+        AudioManager.play('reveal'); // 翻牌/嘗試暗吃音效
+        
         if (!game.rules.darkCapture) {
              // 若未開暗吃，點擊未翻開棋子僅視為翻牌 (不可移動過去)，此處不應觸發，但防呆
              return; 
@@ -516,7 +590,7 @@ function executeMove(piece, tx, ty) {
             if (atkRank === 7 && defRank === 1) win = false;
 
             if (!win) {
-                // 進攻失敗，自己死
+                AudioManager.play('error'); // 攻擊失敗死亡音效
                 killPiece(piece);
                 game.selectedPiece = null;
                 switchTurn();
@@ -526,7 +600,12 @@ function executeMove(piece, tx, ty) {
     }
 
     // 正常移動或吃子
-    if (target) killPiece(target);
+    if (target) {
+        killPiece(target);
+        AudioManager.play('capture'); // 吃子音效
+    } else {
+        AudioManager.play('move'); // 純移動音效
+    }
 
     game.board[piece.x][piece.y] = null;
     piece.x = tx; piece.y = ty;
@@ -546,6 +625,7 @@ function executeMove(piece, tx, ty) {
         
         // 將軍檢查 (全盤)
         if (game.boardType === 'full' && isCheck(game.turn === 'red' ? 'black' : 'red')) {
+            AudioManager.play('check'); // 將軍警告音效
             game.canClaimWin = true;
             // CPU自動將軍獲勝
             if (game.mode === 'pvc' && game.turn === 'black') {
@@ -628,6 +708,7 @@ function checkWinCondition() {
 }
 
 function endGame(winnerColor) {
+    AudioManager.play('win'); // 勝利音效
     game.isGameOver = true;
     localStorage.removeItem('xiangqi_save'); // 清除存檔
     UI.winMessage.innerText = winnerColor === 'red' ? '紅方獲勝！' : '黑方獲勝！';
@@ -726,6 +807,7 @@ function makeAIMove() {
     // 執行 AI 行動
     if (chosenAction.type === 'flip') {
         chosenAction.piece.revealed = true;
+        AudioManager.play('reveal'); // AI 翻牌音效
         switchTurn();
     } else {
         executeMove(chosenAction.piece, chosenAction.tx, chosenAction.ty);
@@ -759,7 +841,14 @@ function loadGame() {
         game.pieces = saveState.pieces;
         game.isGameOver = false;
 
+        // 確保舊存檔相容性
+        if (game.rules.sound === undefined) game.rules.sound = true;
+        AudioManager.enabled = game.rules.sound;
+
         // 同步 UI 狀態
+        const soundCheck = document.getElementById('in-chk-sound');
+        if (soundCheck) soundCheck.checked = game.rules.sound;
+        
         document.getElementById('in-chk-hints').checked = game.rules.hints;
         document.getElementById('in-chk-danger').checked = game.rules.dangerZone;
         document.getElementById('in-chk-dark').checked = game.rules.darkCapture;
