@@ -1,0 +1,59 @@
+* { box-sizing: border-box; font-family: "Microsoft JhengHei", sans-serif; }
+body { margin: 0; padding: 0; background-color: #f0f0f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+.hidden { display: none !important; }
+
+/* 彈窗樣式 */
+.modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 100; }
+.modal-content { background: white; padding: 30px; border-radius: 10px; text-align: center; width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+.menu-section { margin-bottom: 15px; text-align: left; }
+.menu-section label { font-weight: bold; display: block; margin-bottom: 5px; }
+select, button { width: 100%; padding: 8px; margin-top: 5px; font-size: 16px; }
+.primary-btn { background: #4CAF50; color: white; border: none; padding: 12px; cursor: pointer; border-radius: 5px; font-weight: bold; margin-top: 15px; }
+.danger-btn { background: #f44336; color: white; border: none; padding: 10px; cursor: pointer; border-radius: 5px; }
+.action-btn { background: #ff9800; color: white; border: none; padding: 15px; cursor: pointer; border-radius: 5px; font-size: 18px; font-weight: bold; animation: pulse 1s infinite; }
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); background: #ff5722; } 100% { transform: scale(1); } }
+
+/* 骰子區域 */
+.dice-area { display: flex; justify-content: space-around; margin: 20px 0; }
+.dice { border: 2px solid #ccc; border-radius: 10px; padding: 15px; width: 120px; }
+.dice-value { font-size: 40px; font-weight: bold; margin: 10px 0; }
+
+/* 遊戲版面 */
+#game-container { display: flex; gap: 20px; max-width: 1000px; margin: auto; }
+#left-panel { display: flex; flex-direction: column; align-items: center; }
+#right-panel { background: white; padding: 20px; border-radius: 10px; width: 250px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+#status-bar { text-align: center; margin-bottom: 10px; height: 80px; }
+.warning { color: red; font-weight: bold; }
+
+/* 棋盤 */
+#board-container { background: #dcb37b; padding: 10px; border: 3px solid #5d4037; border-radius: 5px; position: relative; }
+#board { display: grid; position: relative; }
+/* 大盤: 9x10, 小盤: 9x5 */
+.grid-full { grid-template-columns: repeat(9, 60px); grid-template-rows: repeat(10, 60px); }
+.grid-half { grid-template-columns: repeat(9, 60px); grid-template-rows: repeat(5, 60px); }
+
+/* 棋格 (交接點) */
+.cell { width: 60px; height: 60px; position: relative; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+/* 畫十字線 (模擬傳統棋盤線) */
+.cell::before { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: #5d4037; z-index: 1; }
+.cell::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: #5d4037; z-index: 1; }
+.cell.edge-top::before { top: 50%; } .cell.edge-bottom::before { bottom: 50%; }
+.cell.edge-left::after { left: 50%; } .cell.edge-right::after { right: 50%; }
+/* 楚河漢界 (僅全盤) */
+.cell.river-top::before { bottom: 50%; }
+.cell.river-bottom::before { top: 50%; }
+
+/* 提示效果 */
+.cell.highlight::after { content: ''; position: absolute; width: 20px; height: 20px; background: rgba(0, 255, 0, 0.5); border-radius: 50%; z-index: 2; border: none; left: auto; right: auto; top: auto; }
+.cell.danger { background: rgba(255, 0, 0, 0.3); }
+
+/* 棋子 */
+.piece { width: 50px; height: 50px; border-radius: 50%; background: #f4d03f; border: 2px solid #a04000; box-shadow: 2px 2px 5px rgba(0,0,0,0.4); display: flex; justify-content: center; align-items: center; font-size: 24px; font-weight: bold; z-index: 10; cursor: pointer; user-select: none; transition: transform 0.2s; position: absolute; }
+.piece.red { color: #d32f2f; }
+.piece.black { color: #1976d2; } /* 為辨識度，黑方使用深藍色 */
+.piece.hidden-piece { background: #b07c4b; color: transparent; border: 2px dashed #5d4037; }
+.piece.hidden-piece::after { content: '車'; color: transparent; } /* 占位維持形狀 */
+.piece.selected { transform: scale(1.1); border-color: #00ff00; box-shadow: 0 0 10px #00ff00; }
+
+.ingame-settings label { display: block; margin: 10px 0; cursor: pointer; }
+.controls { margin-top: 20px; }
