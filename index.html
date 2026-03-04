@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>冠冠中國象棋 (Xiangqi)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="save-prompt-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>發現遊戲存檔</h3>
+            <p>已保存進度，關掉網頁進度消失一概不負責</p>
+            <button id="btn-resume">從上次進度開始</button>
+            <button id="btn-new-game-prompt">開新局</button>
+        </div>
+    </div>
+
+    <div id="main-menu" class="modal">
+        <div class="modal-content">
+            <h1>冠冠中國象棋</h1>
+            
+            <div class="menu-section">
+                <label>對戰模式：</label>
+                <select id="select-mode">
+                    <option value="pvc">玩家 vs CPU</option>
+                    <option value="pvp">玩家 vs 玩家 (本機雙人)</option>
+                </select>
+            </div>
+
+            <div class="menu-section">
+                <label>棋盤模式：</label>
+                <select id="select-board-type">
+                    <option value="full">大盤 (標準 9x10)</option>
+                    <option value="half">小盤 (固定 9x5，全蓋)</option>
+                </select>
+            </div>
+
+            <div class="menu-section" id="cpu-level-section">
+                <label>CPU 等級：</label>
+                <select id="select-cpu-level">
+                    <option value="1">一般 (等級一)</option>
+                    <option value="2">稍強 (等級二)</option>
+                    <option value="3">強勁 (等級三)</option>
+                    <option value="4">超強 (等級四)</option>
+                </select>
+            </div>
+
+            <div class="menu-section" id="half-board-rules" style="display: none;">
+                <label>小盤額外規則：</label>
+                <div><input type="checkbox" id="chk-dark-capture" checked> 暗吃 (Fog Capture)</div>
+                <div><input type="checkbox" id="chk-chain-capture" checked> 連吃 (Chain Capture)</div>
+            </div>
+
+            <div class="menu-section">
+                <label>先手決定方式：</label>
+                <select id="select-first-player">
+                    <option value="manual_red">玩家(紅)先手</option>
+                    <option value="manual_black">對手(黑)先手</option>
+                    <option value="random">隨機決定 (系統擲骰)</option>
+                    <option value="dice">隨機決定 (手動停骰)</option>
+                </select>
+            </div>
+
+            <button id="btn-start-game" class="primary-btn">開始遊戲</button>
+        </div>
+    </div>
+
+    <div id="dice-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>決定先後手 (比大小)</h3>
+            <div class="dice-area">
+                <div id="dice-red" class="dice">
+                    <h4>紅方</h4>
+                    <div class="dice-value">?</div>
+                    <button id="btn-stop-dice-red" class="hidden">停！</button>
+                </div>
+                <div id="dice-black" class="dice">
+                    <h4>黑方</h4>
+                    <div class="dice-value">?</div>
+                    <button id="btn-stop-dice-black" class="hidden">停！</button>
+                </div>
+            </div>
+            <p id="dice-status">準備擲骰...</p>
+        </div>
+    </div>
+
+    <div id="game-container" class="hidden">
+        <div id="left-panel">
+            <div id="status-bar">
+                <h2 id="turn-indicator">輪到：紅方</h2>
+                <p id="chain-status" class="warning hidden">連吃狀態中！必須繼續移動或走到空格。</p>
+                <button id="btn-claim-win" class="action-btn hidden">將軍！(點擊獲勝)</button>
+            </div>
+            
+            <div id="board-container">
+                <div id="board"></div>
+            </div>
+        </div>
+
+        <div id="right-panel">
+            <h3>遊戲設定</h3>
+            <div class="ingame-settings">
+                <label><input type="checkbox" id="in-chk-hints" checked> 棋步提示</label>
+                <label><input type="checkbox" id="in-chk-danger"> 危險區域提示</label>
+                <hr>
+                <div id="in-half-rules" class="hidden">
+                    <label><input type="checkbox" id="in-chk-dark"> 小盤：暗吃</label>
+                    <label><input type="checkbox" id="in-chk-chain"> 小盤：連吃</label>
+                </div>
+            </div>
+            <div class="controls">
+                <button id="btn-quit" class="danger-btn">保存並回主選單</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-over-modal" class="modal hidden">
+        <div class="modal-content">
+            <h1 id="win-message">紅方獲勝！</h1>
+            <button id="btn-back-menu">回主選單</button>
+        </div>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>
